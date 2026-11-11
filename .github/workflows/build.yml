@@ -6,7 +6,6 @@ on:
 
 jobs:
   build-ps3:
-    # Usando o sistema atual estável do GitHub
     runs-on: ubuntu-latest
 
     steps:
@@ -20,16 +19,15 @@ jobs:
 
       - name: Instalar Toolchain PS3 Oficial (Estatico)
         run: |
-          # Método limpo usado nos projetos oficiais do Bucanero (como o Apollo Save Tool)
-          # Ele extrai o SDK diretamente na raiz do workspace do seu projeto
-          curl -sL https://github.com | tar xvz -C ./
+          # URL COMPLETA CORRIGIDA: Baixa o SDK idêntico ao do projeto oficial do Bucanero
+          curl -sL "https://github.com/bucanero/ps3toolchain/releases/download/ubuntu-latest-fad3b5fb/ps3dev-ubuntu-latest-2020-08-31.tar.gz" | tar xvz -C ./
           
-          # Corrige o cabeçalho sysutil que o SDK costuma cobrar
-          curl -sL https://github.com -o ps3dev/ppu/include/sysutil/sysutil.h
+          # Corrige o cabeçalho sysutil necessário para a compilação
+          curl -sL "https://github.com/ps3dev/PSL1GHT/raw/master/ppu/include/sysutil/sysutil.h" -o ps3dev/ppu/include/sysutil/sysutil.h
 
       - name: Compilar e Organizar Pacotes
         run: |
-          # Vincula os caminhos de ambiente diretamente à pasta que baixamos no projeto
+          # Vincula as pastas mapeando o compilador do PS3
           export PS3DEV=$GITHUB_WORKSPACE/ps3dev
           export PSL1GHT=$PS3DEV
           export PATH=$PATH:$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin
