@@ -1,34 +1,17 @@
-#---------------------------------------------------------------------------------
-# SlitherPS3 - Offline Slither-like for PS3 (PSL1GHT)
-#---------------------------------------------------------------------------------
-
 TARGET		:=	SlitherPS3
 BUILD		:=	build
 SOURCES		:=	source
-INCLUDES	:=	include
 
 TITLE		:=	SlitherPS3 Offline
 APPID		:=	SLIT00001
 CONTENTID	:=	UP0001-$(APPID)_00-0000000000000000
 
-#---------------------------------------------------------------------------------
-CFLAGS		:=	-O2 -Wall -mcpu=cell $(MACHDEP) $(INCLUDE)
-CXXFLAGS	:=	$(CFLAGS)
-LDFLAGS		:=	\( (MACHDEP) -Wl,-Map, \)(notdir $@).map
-
-#---------------------------------------------------------------------------------
 include $(PSL1GHT)/ppu_rules
 
-#---------------------------------------------------------------------------------
-export INCLUDE	:=	\( (foreach dir, \)(INCLUDES),-I\( (CURDIR)/ \)(dir)) \
-					$(LIBPSL1GHT_INC) \
-					-I$(PORTLIBS)/include
+CFLAGS		+=	-O2 -Wall
+LIBS		:=	-lrsx -lgcm_sys -lio -lsysutil -lrt -llv2 -lm
 
-export LIBPATHS	:=	\( (LIBPSL1GHT_LIB) -L \)(PORTLIBS)/lib
-export LIBS		:=	-lrsx -lgcm_sys -lio -lsysutil -lrt -llv2 -lm
-
-#---------------------------------------------------------------------------------
-.PHONY: $(BUILD) clean pkg
+.PHONY: all clean pkg
 
 all: $(BUILD)
 
@@ -37,20 +20,7 @@ $(BUILD):
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
 clean:
-	@echo clean ...
-	@rm -rf $(BUILD) $(TARGET).elf $(TARGET).self $(TARGET).pkg $(TARGET).gnpdrm.pkg
+	@rm -rf $(BUILD) $(TARGET).elf $(TARGET).self $(TARGET).pkg
 
 pkg: $(BUILD)
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile pkg
-
-#---------------------------------------------------------------------------------
-else
-
-DEPENDS	:=	$(OFILES:.o=.d)
-
-$(OUTPUT).elf: $(OFILES)
-$(OUTPUT).self: $(OUTPUT).elf
-
--include $(DEPENDS)
-
-endif
