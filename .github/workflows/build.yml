@@ -3,7 +3,7 @@ name: Build SlitherPS3
 on:
   push:
     branches: [ main, master ]
-  workflow_dispatch:   # permite rodar manualmente
+  workflow_dispatch:
 
 jobs:
   build:
@@ -13,25 +13,41 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build with PS3 toolchain
-        uses: addnab/docker-run-action@v3
-        with:
-          image: zeldin/ps3dev-docker:latest
-          options: -v ${{ github.workspace }}:/build -w /build
-          run: |
-            export PS3DEV=/usr/local/ps3dev
-            export PSL1GHT=$PS3DEV
-            export PATH=$PATH:$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin
-            make clean || true
-            make
-            make pkg || true
-            ls -la
+      - name: List files (debug)
+        run: |
+          ls -la
+          ls -la source/ || true
+          cat Makefile || true
 
-      - name: Upload PKG
+      - name: Build with Docker
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/src \
+            -w /src \
+            zeldin/ps3dev-docker:latest \
+            bash -c "
+              export PS3DEV=/usr/local/ps3dev
+              export PSL1GHT=\$PS3DEV
+              export PATH=\$PATH:\$PS3DEV/bin:\$PS3DEV/ppu/bin:\$PS3DEV/spu/bin
+              echo '=== Ambiente ==='
+              ppu-gcc --version || true
+              echo '=== Arquivos ==='
+              ls -la
+              echo '=== Make ==='
+              make clean || true
+              make
+              make pkg || true
+              ls -la
+            "
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: SlitherPS3-pkg
+          name: SlitherPS3
           path: |
             *.pkg
             **/*.pkg
+            *.self
+            **/*.self
+            *.elf
           if-no-files-found: warn
