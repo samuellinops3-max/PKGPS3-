@@ -19,35 +19,37 @@ jobs:
 
       - name: Instalar Toolchain PS3 Oficial (Estatico)
         run: |
-          # URL COMPLETA CORRIGIDA: Baixa o SDK idêntico ao do projeto oficial do Bucanero
-          curl -sL "https://github.com/bucanero/ps3toolchain/releases/download/ubuntu-latest-fad3b5fb/ps3dev-ubuntu-latest-2020-08-31.tar.gz" | tar xvz -C ./
-          
-          # Corrige o cabeçalho sysutil necessário para a compilação
-          curl -sL "https://github.com/ps3dev/PSL1GHT/raw/master/ppu/include/sysutil/sysutil.h" -o ps3dev/ppu/include/sysutil/sysutil.h
+          curl -sL "https://github.com" | tar xvz -C ./
+          curl -sL "https://github.com" -o ps3dev/ppu/include/sysutil/sysutil.h
 
-      - name: Compilar e Organizar Pacotes
+      - name: Compilar e Organizar Pacotes (Sem Makefile)
         run: |
-          # Vincula as pastas mapeando o compilador do PS3
+          # Define as variáveis do PS3
           export PS3DEV=$GITHUB_WORKSPACE/ps3dev
           export PSL1GHT=$PS3DEV
           export PATH=$PATH:$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin
           
-          echo "=== Testando Compilador ==="
-          ppu-gcc --version
+          echo "=== 1. COMPILANDO O CÓDIGO FONTE ==="
+          ppu-gcc -I$PS3DEV/ppu/include -O2 -c source/main.c -o source/main.o
           
-          echo "=== Iniciando Compilacao ==="
-          make clean || true
-          make
+          echo "=== 2. GERANDO O EXECUTÁVEL ELF ==="
+          ppu-gcc source/main.o -L$PS3DEV/ppu/lib -lsl1ght -lvsh -lrt -lvf -lsysutil -lmodplay -lpng -lz -lm -o SlitherPS3.elf
           
-          echo "=== Gerando o Arquivo PKG ==="
-          python3 $PS3DEV/bin/pkg.py --content_id=UP0001-SLIT00001_00-0000000000000000 . SlitherPS3.pkg || make pkg || true
+          echo "=== 3. CONVERTENDO PARA SELF (CONSOLE) ==="
+          make_self SlitherPS3.elf SlitherPS3.self
           
-          echo "=== Organizando Arquivos ==="
+          echo "=== 4. MONTANDO A ESTRUTURA DO PKG ==="
+          mkdir -p pkg/USRDIR
+          cp SlitherPS3.self pkg/USRDIR/EBOOT.BIN
+          
+          echo "=== 5. EMPACOTANDO EM PKG OFICIAL ==="
+          python3 $PS3DEV/bin/pkg.py --content_id=UP0001-SLIT00001_00-0000000000000000 pkg/ SlitherPS3.pkg
+          
+          echo "=== 6. ORGANIZANDO PARA DOWNLOAD ==="
           mkdir -p packages
-          mv *.pkg packages/ 2>/dev/null || echo "Nenhum arquivo .pkg encontrado na raiz."
-          cp *.self *.elf packages/ 2>/dev/null || echo "Nenhum arquivo .self/.elf encontrado."
+          mv SlitherPS3.pkg packages/
+          cp SlitherPS3.self SlitherPS3.elf packages/ 2>/dev/null || true
           
-          echo "=== Conteudo Final da Pasta ==="
           ls -la packages/
 
       - name: Enviar Artefatos (Packages)
