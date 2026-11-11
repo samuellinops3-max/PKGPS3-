@@ -1,47 +1,37 @@
-name: Build PS3 PKG
+name: Build SlitherPS3
 
 on:
   push:
-  workflow_dispatch:
+    branches: [ main, master ]
+  workflow_dispatch:   # permite rodar manualmente
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Baixar código
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Instalar dependências
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y wget unzip make git
+      - name: Build with PS3 toolchain
+        uses: addnab/docker-run-action@v3
+        with:
+          image: zeldin/ps3dev-docker:latest
+          options: -v ${{ github.workspace }}:/build -w /build
+          run: |
+            export PS3DEV=/usr/local/ps3dev
+            export PSL1GHT=$PS3DEV
+            export PATH=$PATH:$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin
+            make clean || true
+            make
+            make pkg || true
+            ls -la
 
-      - name: Instalar ambiente PS3
-        run: |
-          sudo mkdir -p /usr/local/ps3dev
-          URL=$(curl -s https://api.github.com/repos/ps3dev/ps3dev/releases/latest \
-            | grep browser_download_url \
-            | grep linux-x64 \
-            | head -n 1 \
-            | cut -d '"' -f 4)
-          echo "Baixando: $URL"
-          wget -q "$URL" -O /tmp/ps3dev.zip
-          sudo unzip -q /tmp/ps3dev.zip -d /usr/local/ps3dev
-          sudo chown -R $USER: /usr/local/ps3dev
-
-      - name: Compilar e gerar PKG
-        env:
-          PS3DEV: /usr/local/ps3dev
-          PSL1GHT: /usr/local/ps3dev
-        run: |
-          export PATH=$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin:$PATH
-          make
-          make pkg
-
-      - name: Publicar PKG
+      - name: Upload PKG
         uses: actions/upload-artifact@v4
         with:
-          name: ps3-game-pkg
+          name: SlitherPS3-pkg
           path: |
-            **/*.p
+            *.pkg
+            **/*.pkg
+          if-no-files-found: warn
