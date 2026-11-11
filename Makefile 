@@ -13,16 +13,10 @@ include $(PSL1GHT)/ppu_rules
 all: $(TARGET).self
 
 $(TARGET).self: $(TARGET).elf
-	@echo "Criando arquivo SELF..."
-	@make_self $< $@
+	make_self $< $@
 
 $(TARGET).elf: $(OBJS)
-	@echo "Vinculando executavel ELF..."
-	@$(CC) $(OBJS) $(LIBS) -o $@
-
-%.o: %.c
-	@echo "Compilando código C: $<"
-	@$(CC) -I$(PSL1GHT)/ppu/include -c $< -o $@
+	$(CC) $(OBJS) $(LIBS) -o $@
 
 clean:
-	@rm -rf $(SOURCE)/*.o $(TARGET).elf $(TARGET).self $(TARGET).pkg pkg
+	rm -rf $(SOURCE)/*.o $(TARGET).elf $(TARGET).self $(TARGET).pkg pkg
