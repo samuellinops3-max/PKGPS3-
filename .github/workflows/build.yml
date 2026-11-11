@@ -6,7 +6,7 @@ on:
 
 jobs:
   build-ps3:
-    # Usando o sistema atual oficial do GitHub para evitar filas e erros de clonagem
+    # Usando o sistema atual estável do GitHub
     runs-on: ubuntu-latest
 
     steps:
@@ -18,23 +18,18 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y wget curl tar make python3
 
-      - name: Injetar Biblioteca de Compatibilidade (libssl)
+      - name: Instalar Toolchain PS3 Oficial (Estatico)
         run: |
-          cd /tmp
-          # Puxa o pacote oficial e estável do repositório Debian Security
-          wget -q http://debian.org
-          sudo dpkg -i libssl1.1_1.1.1w-0+deb11u1_amd64.deb
-          rm libssl1.1_1.1.1w-0+deb11u1_amd64.deb
-
-      - name: Instalar Toolchain PS3
-        run: |
-          # Extrai o compilador do PS3 diretamente na pasta do projeto
+          # Método limpo usado nos projetos oficiais do Bucanero (como o Apollo Save Tool)
+          # Ele extrai o SDK diretamente na raiz do workspace do seu projeto
           curl -sL https://github.com | tar xvz -C ./
-          # Corrige a biblioteca do SDK
+          
+          # Corrige o cabeçalho sysutil que o SDK costuma cobrar
           curl -sL https://github.com -o ps3dev/ppu/include/sysutil/sysutil.h
 
       - name: Compilar e Organizar Pacotes
         run: |
+          # Vincula os caminhos de ambiente diretamente à pasta que baixamos no projeto
           export PS3DEV=$GITHUB_WORKSPACE/ps3dev
           export PSL1GHT=$PS3DEV
           export PATH=$PATH:$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin
