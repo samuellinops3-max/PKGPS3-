@@ -7,20 +7,16 @@ on:
 jobs:
   build-ps3:
     runs-on: ubuntu-latest
+    # Essa imagem é mantida oficialmente e atualizada direto pelos desenvolvedores do PS3 SDK
+    container: ps3dev/ps3dev:latest
 
     steps:
       - name: Checkout do Codigo
         uses: actions/checkout@v4
 
-      - name: Instalar Toolchain Oficial do PS3 (PSL1GHT)
-        # Usa a Action oficial mantida pela comunidade para injetar o compilador direto
-        uses: ps3dev/ps3dev-action@v1.1
-        with:
-          dist: psl1ght
-
-      - name: Compilar e Organizar Pacotes (Sem Makefile)
+      - name: Compilar e Gerar PKG Nativo
         run: |
-          # O ambiente do ps3dev já define PS3DEV e PSL1GHT automaticamente!
+          # No container oficial, as variáveis PS3DEV e PSL1GHT já vêm configuradas de fábrica!
           
           echo "=== 1. COMPILANDO O CÓDIGO FONTE ==="
           ppu-gcc -I$PSL1GHT/ppu/include -O2 -c source/main.c -o source/main.o
@@ -28,23 +24,20 @@ jobs:
           echo "=== 2. GERANDO O EXECUTÁVEL ELF ==="
           ppu-gcc source/main.o -L$PSL1GHT/ppu/lib -lsl1ght -lvsh -lrt -lvf -lsysutil -lmodplay -lpng -lz -lm -o SlitherPS3.elf
           
-          echo "=== 3. CONVERTENDO PARA SELF (CONSOLE) ==="
+          echo "=== 3. CONVERTENDO PARA SELF FORMA NATIVA ==="
           make_self SlitherPS3.elf SlitherPS3.self
           
-          echo "=== 4. MONTANDO A ESTRUTURA DO PKG ==="
+          echo "=== 4. ESTRUTURA DO PACOTE ==="
           mkdir -p pkg/USRDIR
           cp SlitherPS3.self pkg/USRDIR/EBOOT.BIN
           
-          echo "=== 5. EMPACOTANDO EM PKG OFICIAL ==="
-          # Usa o script oficial de empacotamento da própria ferramenta
+          echo "=== 5. GERANDO PKG INSTALÁVEL ==="
           pkg.py --content_id=UP0001-SLIT00001_00-0000000000000000 pkg/ SlitherPS3.pkg
           
-          echo "=== 6. ORGANIZANDO PARA DOWNLOAD ==="
+          echo "=== 6. SEPARANDO ARQUIVOS ==="
           mkdir -p packages
           mv SlitherPS3.pkg packages/
-          cp SlitherPS3.self SlitherPS3.elf packages/ 2>/dev/null || true
-          
-          ls -la packages/
+          cp SlitherPS3.self packages/ 2>/dev/null || true
 
       - name: Enviar Artefatos (Packages)
         uses: actions/upload-artifact@v4
