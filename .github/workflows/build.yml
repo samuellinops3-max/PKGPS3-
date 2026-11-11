@@ -6,42 +6,32 @@ on:
 
 jobs:
   build-ps3:
-    # Atualizado para ubuntu-latest para tirar o build do travamento da fila
     runs-on: ubuntu-latest
+    
+    # Executa todo o processo dentro de um container Docker do Ubuntu 18.04
+    # Isso resolve de uma vez por todas o problema da falta de bibliotecas antigas (libssl1.1)
+    container:
+      image: ubuntu:18.04
 
     steps:
+      - name: Instalar Ferramentas de Compilacao do Linux
+        run: |
+          apt-get update
+          apt-get install -y wget curl tar make python3 git
+
       - name: Checkout do Codigo
         uses: actions/checkout@v4
 
-      - name: Instalar Dependencias do Sistema
+      - name: Instalar Toolchain PS3 (Compilador)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y wget curl tar make build-essential
-
-      - name: Compilar e Injetar libssl1.1 (Necessaria para o PS3 Toolchain)
-        run: |
-          cd /tmp
-          # Baixa o codigo-fonte oficial da versao antiga do OpenSSL exigida pelo compilador do PS3
-          wget https://openssl.org
-          tar -xf openssl-1.1.1w.tar.gz
-          cd openssl-1.1.1w
-          # Compila e instala apenas a biblioteca compartilhada de forma ultra rapida
-          ./config shared --prefix=/usr/local/ssl --openssldir=/usr/local/ssl
-          make -j$(nproc)
-          sudo make install_sw
-          # Cria os links para o sistema reconhecer a biblioteca
-          sudo ln -s /usr/local/ssl/lib/libssl.so.1.1 /usr/lib/libssl.so.1.1
-          sudo ln -s /usr/local/ssl/lib/libcrypto.so.1.1 /usr/lib/libcrypto.so.1.1
-
-      - name: Instalar Toolchain PS3
-        run: |
-          # Extrai o compilador do PS3 diretamente no workspace do projeto
+          # Baixa o compilador estável do PS3 direto no diretório do projeto
           curl -sL https://github.com | tar xvz -C ./
-          # Corrige o cabeçalho do SDK do PS3
+          # Ajusta a correção necessária na biblioteca do PSL1GHT
           curl -sL https://github.com -o ps3dev/ppu/include/sysutil/sysutil.h
 
       - name: Compilar e Organizar Pacotes
         run: |
+          # Define os caminhos apontando para as ferramentas de desenvolvimento do PS3
           export PS3DEV=$GITHUB_WORKSPACE/ps3dev
           export PSL1GHT=$PS3DEV
           export PATH=$PATH:$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin
