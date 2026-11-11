@@ -15,20 +15,27 @@ jobs:
       - name: Instalar dependências
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential git make cmake python3 wget unzip
+          sudo apt-get install -y wget unzip make git
 
-      - name: Instalar PSL1GHT
+      - name: Instalar ambiente PS3
         run: |
-          git clone https://github.com/ps3dev/PSL1GHT.git
-          cd PSL1GHT
-          export PSL1GHT=$GITHUB_WORKSPACE/PSL1GHT/build
-          make
-          make install
+          sudo mkdir -p /usr/local/ps3dev
+          URL=$(curl -s https://api.github.com/repos/ps3dev/ps3dev/releases/latest \
+            | grep browser_download_url \
+            | grep linux-x64 \
+            | head -n 1 \
+            | cut -d '"' -f 4)
+          echo "Baixando: $URL"
+          wget -q "$URL" -O /tmp/ps3dev.zip
+          sudo unzip -q /tmp/ps3dev.zip -d /usr/local/ps3dev
+          sudo chown -R $USER: /usr/local/ps3dev
 
       - name: Compilar e gerar PKG
+        env:
+          PS3DEV: /usr/local/ps3dev
+          PSL1GHT: /usr/local/ps3dev
         run: |
-          export PSL1GHT=$GITHUB_WORKSPACE/PSL1GHT/build
-          export PATH=$PSL1GHT/bin:$PATH
+          export PATH=$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin:$PATH
           make
           make pkg
 
@@ -37,4 +44,4 @@ jobs:
         with:
           name: ps3-game-pkg
           path: |
-            **/*.pkg
+            **/*.p
