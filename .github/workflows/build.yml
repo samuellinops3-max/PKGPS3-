@@ -2,7 +2,6 @@ name: Build SlitherPS3
 
 on:
   push:
-    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
@@ -13,41 +12,47 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: List files (debug)
+      - name: Install dependencies
         run: |
+          sudo apt-get update
+          sudo apt-get install -y wget tar
+
+      - name: Download PS3DEV toolchain
+        run: |
+          mkdir -p $HOME/ps3dev
+          cd /tmp
+          # Baixa a última release (ajuste se precisar)
+          wget -q https://github.com/ps3dev/ps3dev/releases/download/nightly-2026-10-12/ps3dev-linux-x86_64.tar.gz -O ps3dev.tar.gz || \
+          wget -q https://github.com/ps3dev/ps3dev/releases/latest/download/ps3dev-linux-x86_64.tar.gz -O ps3dev.tar.gz
+          tar -xzf ps3dev.tar.gz -C $HOME/ps3dev --strip-components=1
+          ls -la $HOME/ps3dev
+
+      - name: Build
+        run: |
+          export PS3DEV=$HOME/ps3dev
+          export PSL1GHT=$PS3DEV
+          export PATH=$PATH:$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin
+          
+          echo "=== Verificando toolchain ==="
+          ppu-gcc --version
+          
+          echo "=== Arquivos ==="
           ls -la
-          ls -la source/ || true
-          cat Makefile || true
+          
+          echo "=== Compilando ==="
+          make clean || true
+          make
+          make pkg || true
+          
+          echo "=== Resultado ==="
+          ls -la
 
-      - name: Build with Docker
-        run: |
-          docker run --rm \
-            -v ${{ github.workspace }}:/src \
-            -w /src \
-            zeldin/ps3dev-docker:latest \
-            bash -c "
-              export PS3DEV=/usr/local/ps3dev
-              export PSL1GHT=\$PS3DEV
-              export PATH=\$PATH:\$PS3DEV/bin:\$PS3DEV/ppu/bin:\$PS3DEV/spu/bin
-              echo '=== Ambiente ==='
-              ppu-gcc --version || true
-              echo '=== Arquivos ==='
-              ls -la
-              echo '=== Make ==='
-              make clean || true
-              make
-              make pkg || true
-              ls -la
-            "
-
-      - name: Upload artifacts
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: SlitherPS3
           path: |
             *.pkg
-            **/*.pkg
             *.self
-            **/*.self
             *.elf
           if-no-files-found: warn
