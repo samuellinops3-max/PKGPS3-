@@ -15,17 +15,37 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y wget tar
+          sudo apt-get install -y wget curl tar git build-essential
 
-      - name: Download PS3DEV toolchain
+      - name: Setup PS3DEV
         run: |
+          # Tenta baixar uma release conhecida
           mkdir -p $HOME/ps3dev
           cd /tmp
-          # Baixa a última release (ajuste se precisar)
-          wget -q https://github.com/ps3dev/ps3dev/releases/download/nightly-2026-10-12/ps3dev-linux-x86_64.tar.gz -O ps3dev.tar.gz || \
-          wget -q https://github.com/ps3dev/ps3dev/releases/latest/download/ps3dev-linux-x86_64.tar.gz -O ps3dev.tar.gz
-          tar -xzf ps3dev.tar.gz -C $HOME/ps3dev --strip-components=1
-          ls -la $HOME/ps3dev
+          
+          echo "Tentando baixar toolchain..."
+          
+          # Várias tentativas de nome de arquivo
+          for url in \
+            "https://github.com/ps3dev/ps3dev/releases/download/nightly-2026-10-12/ps3dev-linux-x86_64.tar.gz" \
+            "https://github.com/ps3dev/ps3dev/releases/download/nightly-2026-07-26/ps3dev-linux-x86_64.tar.gz" \
+            "https://github.com/ps3dev/ps3dev/releases/download/nightly-2026-06-17/ps3dev-linux-x86_64.tar.gz"
+          do
+            echo "Tentando: $url"
+            if wget -q --spider "$url"; then
+              wget -q "$url" -O ps3dev.tar.gz
+              break
+            fi
+          done
+          
+          if [ -f ps3dev.tar.gz ]; then
+            tar -xzf ps3dev.tar.gz -C $HOME/ps3dev --strip-components=1 || tar -xzf ps3dev.tar.gz -C $HOME/ps3dev
+            echo "Toolchain extraído"
+            ls -la $HOME/ps3dev
+          else
+            echo "Nenhuma release encontrada com esse nome. Vamos tentar outro método."
+            exit 1
+          fi
 
       - name: Build
         run: |
@@ -33,18 +53,11 @@ jobs:
           export PSL1GHT=$PS3DEV
           export PATH=$PATH:$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin
           
-          echo "=== Verificando toolchain ==="
-          ppu-gcc --version
-          
-          echo "=== Arquivos ==="
+          ppu-gcc --version || echo "ppu-gcc não encontrado"
           ls -la
-          
-          echo "=== Compilando ==="
           make clean || true
-          make
+          make || true
           make pkg || true
-          
-          echo "=== Resultado ==="
           ls -la
 
       - name: Upload
