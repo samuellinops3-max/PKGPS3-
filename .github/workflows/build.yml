@@ -1,15 +1,40 @@
+name: Build PS3 PKG
 
-
-```yaml
-name: Teste do main.c
-
-on: [push, workflow_dispatch]
+on:
+  push:
+  workflow_dispatch:
 
 jobs:
-  teste:
+  build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - name: Conferir se o main.c existe
-        run: test -f main.c && echo "main.c encontrado"
-```
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Instalar dependências
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential git make cmake python3 wget unzip
+
+      - name: Instalar PSL1GHT
+        run: |
+          git clone https://github.com/ps3dev/PSL1GHT.git
+          cd PSL1GHT
+          export PSL1GHT=$GITHUB_WORKSPACE/PSL1GHT/build
+          make
+          make install
+
+      - name: Compilar e gerar PKG
+        run: |
+          export PSL1GHT=$GITHUB_WORKSPACE/PSL1GHT/build
+          export PATH=$PSL1GHT/bin:$PATH
+          make
+          make pkg
+
+      - name: Publicar PKG
+        uses: actions/upload-artifact@v4
+        with:
+          name: ps3-game-pkg
+          path: |
+            **/*.pkg
