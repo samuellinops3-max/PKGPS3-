@@ -1,0 +1,15 @@
+
+
+```yaml
+name: Teste do main.c
+
+on: [push, workflow_dispatch]
+
+jobs:
+  teste:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Conferir se o main.c existe
+        run: test -f main.c && echo "main.c encontrado"
+```
