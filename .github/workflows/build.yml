@@ -1,3 +1,4 @@
+
 name: Teste Build PS3
 
 on:
@@ -6,27 +7,30 @@ on:
 
 jobs:
   build-ps3:
-    runs-on: ubuntu-latest
+    # Usando o ubuntu-20.04, o próprio sistema consegue buscar o libssl1.1 oficial via apt
+    runs-on: ubuntu-20.04
 
     steps:
       - name: Checkout do Código
         uses: actions/checkout@v4
 
-      - name: Instalar Dependências e libssl Antiga
+      - name: Instalar Dependencias do Sistema
         run: |
+          # Adiciona o repositório de segurança que contém a biblioteca antiga que o compilador do PS3 exige
+          echo "deb http://security.ubuntu.com/ubuntu focal-security main" | sudo tee /etc/apt/sources.list.d/focal-security.list
           sudo apt-get update
-          sudo apt-get install -y wget curl tar make python3
-          curl -sL http://ubuntu.com -o /tmp/libssl.deb
-          sudo dpkg -i /tmp/libssl.deb
-          rm /tmp/libssl.deb
+          sudo apt-get install -y wget curl tar make libssl1.1
 
       - name: Instalar Toolchain PS3
         run: |
+          # Extrai o compilador do PS3 diretamente no workspace do projeto
           curl -sL https://github.com | tar xvz -C ./
+          # Ajusta o header clássico do SDK do PS3
           curl -sL https://github.com -o ps3dev/ppu/include/sysutil/sysutil.h
 
       - name: Compilar e Organizar Pacotes
         run: |
+          # Define os caminhos apontando para a pasta extraída no repositório
           export PS3DEV=$GITHUB_WORKSPACE/ps3dev
           export PSL1GHT=$PS3DEV
           export PATH=$PATH:$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin
@@ -37,7 +41,9 @@ jobs:
           echo "=== Iniciando Compilacao ==="
           make clean || true
           make
-          # Roda o script python do SDK para envelopar o PKG do PS3
+          
+          echo "=== Gerando o Arquivo PKG ==="
+          # Executa o empacotador python nativo do SDK do PS3
           python3 $PS3DEV/bin/pkg.py --content_id=UP0001-SLIT00001_00-0000000000000000 . SlitherPS3.pkg || make pkg || true
           
           echo "=== Organizando Arquivos ==="
