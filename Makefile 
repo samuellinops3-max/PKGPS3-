@@ -1,51 +1,33 @@
-#---------------------------------------------------------------------------------
-# Simple Makefile for SlitherPS3
-#---------------------------------------------------------------------------------
-
 TARGET		:=	SlitherPS3
-BUILD		:=	build
-SOURCES		:=	.
-INCLUDES	:=	.
-
-TITLE		:=	SlitherPS3 Offline
+TITLE		:=	Slither.io PS3 Native
 APPID		:=	SLIT00001
-CONTENTID	:=	UP0001-$(APPID)_00-0000000000000000
+CONTENT_ID	:=	UP0001-SLIT00001_00-0000000000000000
 
-#---------------------------------------------------------------------------------
-ifeq ($(strip $(PSL1GHT)),)
-$(error "PSL1GHT not set")
-endif
+# Diretórios de código e objetos
+SOURCE		:=	source
+OBJS		:=	$(SOURCE)/main.o
+
+# Bibliotecas e Includes do SDK do PS3 (PSL1GHT)
+LIBS		:=	-lsl1ght -lvsh -lrt -lvf -lsysutil -lmodplay -lpng -lz -lm
 
 include $(PSL1GHT)/ppu_rules
 
-#---------------------------------------------------------------------------------
-CFLAGS		:=	-O2 -Wall -mcpu=cell $(MACHDEP) $(INCLUDE)
-CXXFLAGS	:=	$(CFLAGS)
-LDFLAGS		:=	\( (MACHDEP) -Wl,-Map, \)(notdir $@).map
+all: $(TARGET).self
 
-LIBS		:=	-lrsx -lgcm_sys -lio -lsysutil -lrt -llv2 -lm
+%.self: %.elf
+	@echo "Criando SELF..."
+	@make_self $< $@
 
-#---------------------------------------------------------------------------------
-CFILES		:=	\( (foreach dir, \)(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
-OFILES		:=	$(CFILES:.c=.o)
+%.elf: $(OBJS)
+	@echo "Vinculando ELF..."
+	@$(CC) $(OBJS) $(LIBS) -o $@
 
-#---------------------------------------------------------------------------------
-all: $(TARGET).elf
-
-$(TARGET).elf: $(OFILES)
-	$(CC) $^ $(LDFLAGS) $(LIBPATHS) $(LIBS) -o $@
-	$(SPRX) $@
-	$(MAKESELF) $(TARGET).elf $(TARGET).self
-
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-pkg: $(TARGET).pkg
-
-$(TARGET).pkg: $(TARGET).self
-	$(PKG) --contentid $(CONTENTID) $(TARGET).self $@
+pkg: $(TARGET).self
+	@echo "Criando PKG..."
+	@mkdir -p pkg/USRDIR
+	@cp $(TARGET).self pkg/USRDIR/EBOOT.BIN
+	@echo "Content-ID: $(CONTENT_ID)"
+	@pkg.py --content_id=$(CONTENT_ID) pkg/ $(TARGET).pkg
 
 clean:
-	rm -f *.o $(TARGET).elf $(TARGET).self $(TARGET).pkg
-
-.PHONY: all clean pkg
+	@rm -rf $(SOURCE)/*.o $(TARGET).elf $(TARGET).self $(TARGET).pkg pkg
