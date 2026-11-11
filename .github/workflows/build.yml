@@ -1,62 +1,58 @@
-name: Build SlitherPS3
+name: Teste Build PS3
 
 on:
   push:
   workflow_dispatch:
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  build-ps3:
+    # Usando o Ubuntu 20.04 porque o compilador antigo do PS3 precisa de bibliotecas (libssl1.1) desta versão.
+    runs-on: ubuntu-20.04
 
     steps:
-      - name: Checkout
+      - name: Checkout do Código
         uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Instalar Ferramentas de Compilacao
         run: |
           sudo apt-get update
           sudo apt-get install -y wget curl tar make
 
-      - name: Download toolchain (working one)
+      - name: Baixar e Instalar Compilador PS3 (Toolchain)
         run: |
-          mkdir -p $HOME/ps3dev
           cd /tmp
-          # Toolchain estável usado por vários projetos
-          wget -q https://github.com/bucanero/ps3toolchain/releases/download/ubuntu-latest-fad3b5fb/ps3dev-ubuntu-latest-2020-08-31.tar.gz -O ps3dev.tar.gz
+          wget -q https://github.com -O ps3dev.tar.gz
           tar -xzf ps3dev.tar.gz -C $HOME/
-          # Ajusta caminho se necessário
-          if [ -d $HOME/ps3dev ]; then
-            echo "Toolchain encontrado em $HOME/ps3dev"
-          else
-            ls -la $HOME/
-          fi
 
-      - name: Build
+      - name: Compilar e Organizar Pacotes
         run: |
+          # Configura as variaveis de ambiente para o compilador do PS3
           export PS3DEV=$HOME/ps3dev
           export PSL1GHT=$PS3DEV
           export PATH=$PATH:$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin
           
-          echo "=== Versão do compilador ==="
-          ppu-gcc --version || echo "ppu-gcc não encontrado"
+          echo "=== Verificando Compilador ==="
+          ppu-gcc --version
           
-          echo "=== Arquivos do projeto ==="
-          ls -la
-          
-          echo "=== Compilando ==="
+          echo "=== Iniciando Compilacao ==="
           make clean || true
           make
           make pkg || true
           
-          echo "=== Resultado ==="
-          ls -la
+          echo "=== Organizando Arquivos ==="
+          mkdir -p packages
+          
+          # Move os arquivos gerados para a pasta packages
+          mv *.pkg packages/ 2>/dev/null || echo "Nenhum arquivo .pkg encontrado na raiz."
+          cp *.self *.elf packages/ 2>/dev/null || echo "Nenhum arquivo .self/.elf encontrado."
+          
+          echo "=== Conteudo Final da Pasta ==="
+          ls -la packages/
 
-      - name: Upload
+      - name: Enviar Artefatos (Packages)
         uses: actions/upload-artifact@v4
         with:
-          name: SlitherPS3
-          path: |
-            *.pkg
-            *.self
-            *.elf
-          if-no-files-found: warn
+          name: SlitherPS3-Packages
+          path: packages/
+          # Se a pasta estiver vazia (porque a compilação falhou), o build ficará VERMELHO.
+          if-no-files-found: error
