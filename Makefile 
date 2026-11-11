@@ -1,26 +1,51 @@
+#---------------------------------------------------------------------------------
+# Simple Makefile for SlitherPS3
+#---------------------------------------------------------------------------------
+
 TARGET		:=	SlitherPS3
 BUILD		:=	build
-SOURCES		:=	source
+SOURCES		:=	.
+INCLUDES	:=	.
 
 TITLE		:=	SlitherPS3 Offline
 APPID		:=	SLIT00001
 CONTENTID	:=	UP0001-$(APPID)_00-0000000000000000
 
+#---------------------------------------------------------------------------------
+ifeq ($(strip $(PSL1GHT)),)
+$(error "PSL1GHT not set")
+endif
+
 include $(PSL1GHT)/ppu_rules
 
-CFLAGS		+=	-O2 -Wall
+#---------------------------------------------------------------------------------
+CFLAGS		:=	-O2 -Wall -mcpu=cell $(MACHDEP) $(INCLUDE)
+CXXFLAGS	:=	$(CFLAGS)
+LDFLAGS		:=	\( (MACHDEP) -Wl,-Map, \)(notdir $@).map
+
 LIBS		:=	-lrsx -lgcm_sys -lio -lsysutil -lrt -llv2 -lm
 
-.PHONY: all clean pkg
+#---------------------------------------------------------------------------------
+CFILES		:=	\( (foreach dir, \)(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
+OFILES		:=	$(CFILES:.c=.o)
 
-all: $(BUILD)
+#---------------------------------------------------------------------------------
+all: $(TARGET).elf
 
-$(BUILD):
-	@[ -d $@ ] || mkdir -p $@
-	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
+$(TARGET).elf: $(OFILES)
+	$(CC) $^ $(LDFLAGS) $(LIBPATHS) $(LIBS) -o $@
+	$(SPRX) $@
+	$(MAKESELF) $(TARGET).elf $(TARGET).self
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+pkg: $(TARGET).pkg
+
+$(TARGET).pkg: $(TARGET).self
+	$(PKG) --contentid $(CONTENTID) $(TARGET).self $@
 
 clean:
-	@rm -rf $(BUILD) $(TARGET).elf $(TARGET).self $(TARGET).pkg
+	rm -f *.o $(TARGET).elf $(TARGET).self $(TARGET).pkg
 
-pkg: $(BUILD)
-	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile pkg
+.PHONY: all clean pkg
