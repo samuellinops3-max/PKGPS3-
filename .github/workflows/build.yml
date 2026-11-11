@@ -1,0 +1,43 @@
+name: Compilar SlitherPS3
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build-ps3:
+    runs-on: ubuntu-latest
+    container: ps3dev/ps3dev:latest
+
+    steps:
+      - name: Checkout do Codigo
+        uses: actions/checkout@v4
+
+      - name: Compilar Jogo e Criar PKG
+        run: |
+          echo "=== 1. COMPILANDO O CÓDIGO FONTE ==="
+          ppu-gcc -I$PSL1GHT/ppu/include -O2 -c source/main.c -o source/main.o
+          
+          echo "=== 2. GERANDO O BINÁRIO DO JOGO ==="
+          ppu-gcc source/main.o -L$PSL1GHT/ppu/lib -ltiny3d -lsl1ght -lvsh -lrt -lvf -lsysutil -lmodplay -lpng -lz -lm -o SlitherPS3.elf
+          
+          echo "=== 3. CRIANDO ARQUIVO DE CONSOLE (SELF) ==="
+          make_self SlitherPS3.elf SlitherPS3.self
+          
+          echo "=== 4. MONTANDO PASTA DA XMB ==="
+          mkdir -p pkg/USRDIR
+          cp SlitherPS3.self pkg/USRDIR/EBOOT.BIN
+          
+          echo "=== 5. GERANDO PKG INSTALÁVEL ==="
+          pkg.py --content_id=UP0001-SLIT00001_00-0000000000000000 pkg/ SlitherPS3.pkg
+          
+          echo "=== 6. CONCLUINDO E ORGANIZANDO ==="
+          mkdir -p packages
+          mv SlitherPS3.pkg packages/
+
+      - name: Enviar Arquivo ZIP para Download
+        uses: actions/upload-artifact@v4
+        with:
+          name: SlitherPS3-PKG-Extraia-Aqui
+          path: packages/
+          if-no-files-found: error
