@@ -3,31 +3,26 @@ TITLE		:=	Slither.io PS3 Native
 APPID		:=	SLIT00001
 CONTENT_ID	:=	UP0001-SLIT00001_00-0000000000000000
 
-# Diretórios de código e objetos
 SOURCE		:=	source
 OBJS		:=	$(SOURCE)/main.o
 
-# Bibliotecas e Includes do SDK do PS3 (PSL1GHT)
 LIBS		:=	-lsl1ght -lvsh -lrt -lvf -lsysutil -lmodplay -lpng -lz -lm
 
 include $(PSL1GHT)/ppu_rules
 
 all: $(TARGET).self
 
-%.self: %.elf
-	@echo "Criando SELF..."
+$(TARGET).self: $(TARGET).elf
+	@echo "Criando arquivo SELF..."
 	@make_self $< $@
 
-%.elf: $(OBJS)
-	@echo "Vinculando ELF..."
+$(TARGET).elf: $(OBJS)
+	@echo "Vinculando executavel ELF..."
 	@$(CC) $(OBJS) $(LIBS) -o $@
 
-pkg: $(TARGET).self
-	@echo "Criando PKG..."
-	@mkdir -p pkg/USRDIR
-	@cp $(TARGET).self pkg/USRDIR/EBOOT.BIN
-	@echo "Content-ID: $(CONTENT_ID)"
-	@pkg.py --content_id=$(CONTENT_ID) pkg/ $(TARGET).pkg
+%.o: %.c
+	@echo "Compilando código C: $<"
+	@$(CC) -I$(PSL1GHT)/ppu/include -c $< -o $@
 
 clean:
 	@rm -rf $(SOURCE)/*.o $(TARGET).elf $(TARGET).self $(TARGET).pkg pkg
