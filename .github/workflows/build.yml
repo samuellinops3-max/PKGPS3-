@@ -15,36 +15,20 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y wget curl tar git build-essential
+          sudo apt-get install -y wget curl tar make
 
-      - name: Setup PS3DEV
+      - name: Download toolchain (working one)
         run: |
-          # Tenta baixar uma release conhecida
           mkdir -p $HOME/ps3dev
           cd /tmp
-          
-          echo "Tentando baixar toolchain..."
-          
-          # Várias tentativas de nome de arquivo
-          for url in \
-            "https://github.com/ps3dev/ps3dev/releases/download/nightly-2026-10-12/ps3dev-linux-x86_64.tar.gz" \
-            "https://github.com/ps3dev/ps3dev/releases/download/nightly-2026-07-26/ps3dev-linux-x86_64.tar.gz" \
-            "https://github.com/ps3dev/ps3dev/releases/download/nightly-2026-06-17/ps3dev-linux-x86_64.tar.gz"
-          do
-            echo "Tentando: $url"
-            if wget -q --spider "$url"; then
-              wget -q "$url" -O ps3dev.tar.gz
-              break
-            fi
-          done
-          
-          if [ -f ps3dev.tar.gz ]; then
-            tar -xzf ps3dev.tar.gz -C $HOME/ps3dev --strip-components=1 || tar -xzf ps3dev.tar.gz -C $HOME/ps3dev
-            echo "Toolchain extraído"
-            ls -la $HOME/ps3dev
+          # Toolchain estável usado por vários projetos
+          wget -q https://github.com/bucanero/ps3toolchain/releases/download/ubuntu-latest-fad3b5fb/ps3dev-ubuntu-latest-2020-08-31.tar.gz -O ps3dev.tar.gz
+          tar -xzf ps3dev.tar.gz -C $HOME/
+          # Ajusta caminho se necessário
+          if [ -d $HOME/ps3dev ]; then
+            echo "Toolchain encontrado em $HOME/ps3dev"
           else
-            echo "Nenhuma release encontrada com esse nome. Vamos tentar outro método."
-            exit 1
+            ls -la $HOME/
           fi
 
       - name: Build
@@ -53,11 +37,18 @@ jobs:
           export PSL1GHT=$PS3DEV
           export PATH=$PATH:$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin
           
+          echo "=== Versão do compilador ==="
           ppu-gcc --version || echo "ppu-gcc não encontrado"
+          
+          echo "=== Arquivos do projeto ==="
           ls -la
+          
+          echo "=== Compilando ==="
           make clean || true
-          make || true
+          make
           make pkg || true
+          
+          echo "=== Resultado ==="
           ls -la
 
       - name: Upload
